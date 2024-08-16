@@ -104,7 +104,7 @@ class State {
     return WinningStatus::NONE;
   }
 
-  void printBoard() {
+  void print_board() {
     rep(i, 3) {
       rep(j, 3) cerr << board[i * 3 + j];
       cerr << endl;
@@ -175,7 +175,7 @@ int main() {
       cin.ignore();
     }
 
-    state.printBoard();
+    state.print_board();
 
     actionType ans = minimax::exec_minimax(state);
     int row, col;
