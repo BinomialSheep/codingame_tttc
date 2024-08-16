@@ -14,7 +14,7 @@ inline bool chmin(T& a, T b) {
 
 /*
 原子モンテカルロ対応。
-4337/8940位。
+970/8940位。
 */
 
 mt19937 mt_for_action(0);
@@ -51,9 +51,10 @@ using actionType = int;
 class State {
  private:
   inline static const vector<int> action_to_now_big_board = {
-      0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 0, 0, 1, 1, 1,
-      2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6,
-      7, 7, 7, 8, 8, 8, 6, 6, 6, 7, 7, 7, 8, 8, 8, 6, 6, 6, 7, 7, 7, 8, 8, 8};
+      0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 0, 0,
+      1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 3, 3, 3, 4, 4, 4,
+      5, 5, 5, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8,
+      6, 6, 6, 7, 7, 7, 8, 8, 8, 6, 6, 6, 7, 7, 7, 8, 8, 8};
   inline static const vector<int> action_to_next_big_board = {
       0, 1, 2, 0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5, 3, 4, 5, 6, 7, 8,
       6, 7, 8, 6, 7, 8, 0, 1, 2, 0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5,
@@ -91,13 +92,14 @@ class State {
     this->big_board_index = action_to_now_big_board[action];
     check_small_winning_status();
     this->big_board_index = action_to_next_big_board[action];
+    if (big_board[this->big_board_index] != '.') this->big_board_index = -1;
   }
 
   // 現在のプレイヤーが可能な行動を全て取得する
   vector<actionType> legal_actions() {
     vector<actionType> ret;
 
-    if (big_board_index == -1 || big_board[big_board_index] != '.') {
+    if (big_board_index == -1) {
       rep(i, 81) {
         if (big_board[action_to_now_big_board[i]] == '.' && board[i] == '.') {
           ret.push_back(i);
@@ -187,7 +189,20 @@ class State {
         return (is_x ? WinningStatus::WIN : WinningStatus::LOSE);
       }
     }
-    return WinningStatus::NONE;
+
+    int cnt_o = 0, cnt_x = 0;
+    rep(i, 9) {
+      if (big_board[i] == '.') return WinningStatus::NONE;
+      if (big_board[i] == 'o') cnt_o++;
+      if (big_board[i] == 'x') cnt_x++;
+    }
+    if (cnt_o == cnt_x) {
+      return WinningStatus::DRAW;
+    } else if ((cnt_o > cnt_x && !is_x) || (cnt_x > cnt_o && is_x)) {
+      return WinningStatus::WIN;
+    } else {
+      return WinningStatus::LOSE;
+    }
   }
 
   void print_board() {
@@ -219,7 +234,7 @@ int playout(State& state) {
   // ランダムプレイ
   actionType action = legal_actions[mt_for_action() % (legal_actions.size())];
   state.advance(action);
-  return playout(state);
+  return -playout(state);
 }
 
 actionType exec_montecalro(State& state, const int64_t time_threshold = 90) {
@@ -234,7 +249,7 @@ actionType exec_montecalro(State& state, const int64_t time_threshold = 90) {
     rep(i, legal_actions.size()) {
       State new_state = state;
       new_state.advance(legal_actions[i]);
-      actions_score[i] += playout(new_state);
+      actions_score[i] -= playout(new_state);
     }
   }
   cerr << "cnt: " << cnt << endl;
@@ -272,6 +287,13 @@ int main() {
     }
 
     state.print_board();
+
+    // 初手はさすがにど真ん中でいい
+    if (opp_row == -1) {
+      cout << 4 << " " << 4 << endl;
+      state.advance(40);
+      continue;
+    }
 
     actionType ans = montecarlo::exec_montecalro(state);
     int row, col;
