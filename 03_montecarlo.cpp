@@ -14,7 +14,14 @@ inline bool chmin(T& a, T b) {
 
 /*
 原子モンテカルロ対応。
-970/8940位。
+620/8940位。
+
+TODO：
+- randの高速化
+- 3連結の高速化
+- 1手必勝判定
+- MCTS化
+
 */
 
 mt19937 mt_for_action(0);
