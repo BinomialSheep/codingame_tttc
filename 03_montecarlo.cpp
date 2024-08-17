@@ -15,6 +15,7 @@ inline bool chmin(T& a, T b) {
 /*
 原子モンテカルロ対応。
 620/8940位。
+最初のプレイアウト800回弱
 
 TODO：
 - randの高速化
@@ -246,14 +247,16 @@ int playout(State& state) {
 
 actionType exec_montecalro(State& state, const int64_t time_threshold = 90) {
   auto time_keeper = TimeKeeper(time_threshold);
+  int turn = 0;
   int cnt = 0;
 
   vector<actionType> legal_actions = state.legal_actions();
   vector<int> actions_score(legal_actions.size());
 
-  for (;; cnt++) {
+  for (;; turn++) {
     if (time_keeper.isTimeOver()) break;
     rep(i, legal_actions.size()) {
+      cnt++;
       State new_state = state;
       new_state.advance(legal_actions[i]);
       actions_score[i] -= playout(new_state);

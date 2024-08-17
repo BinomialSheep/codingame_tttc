@@ -21,7 +21,8 @@
 			"string": "cpp",
 			"*.tcc": "cpp",
 			"deque": "cpp",
-			"vector": "cpp"
+			"vector": "cpp",
+			"ratio": "cpp"
 		}
 	}
 }
