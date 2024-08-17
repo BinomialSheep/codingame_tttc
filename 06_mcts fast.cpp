@@ -1,6 +1,8 @@
 #include <bits/stdc++.h>
 using namespace std;
 #define rep(i, n) for (int i = 0; i < (int)(n); i++)
+#define all(x) (x).begin(), (x).end()
+
 template <typename T>
 inline bool chmax(T& a, T b) {
   return ((a < b) ? (a = b, true) : (false));
@@ -9,15 +11,13 @@ template <typename T>
 inline bool chmin(T& a, T b) {
   return ((a > b) ? (a = b, true) : (false));
 }
+#pragma GCC target("avx")
 #pragma GCC optimize("O3")
 #pragma GCC optimize("unroll-loops")
 
 /*
-MCTS化。
-c 1.0 EXPAND_THRESHOLD = 10 218位
-c 1.0 EXPAND_THRESHOLD = 20 208位
-c 1.5 EXPAND_THRESHOLD = 20 236位
-c 1.5 EXPAND_THRESHOLD = 10 228位
+高速化
+c 1.0 EXPAND_THRESHOLD = 10 210位
 */
 
 static uint32_t randXor() {
@@ -59,9 +59,10 @@ class TimeKeeper {
 const int pow_4_9 = 262144;
 vector<int> big_winning_status_map(pow_4_9);
 vector<int> small_winning_status_map(pow_4_9);
+// 必勝手候補
+vector<vector<int>> big_winning_move_map_o(pow_4_9);
+vector<vector<int>> big_winning_move_map_x(pow_4_9);
 // 必勝手の1つが入る（なければ-1）
-vector<int> big_winning_move_map_o(pow_4_9, -1);
-vector<int> big_winning_move_map_x(pow_4_9, -1);
 vector<int> small_winning_move_map_o(pow_4_9, -1);
 vector<int> small_winning_move_map_x(pow_4_9, -1);
 // debug用
@@ -122,70 +123,78 @@ class MapInitialize {
 
   // big_winning_move_map_[ox]に追加する
   void set_big_winning_move_map(int bit, string& str) {
+    if (big_winning_status_map[bit] != 3) return;
     rep(ci, 2) {
       char c = (ci ? 'o' : 'x');
       // 横
       rep(y, 3) {
         if (str[y * 3] == '.' && str[y * 3 + 1] == c && str[y * 3 + 2] == c) {
-          if (c == 'o') big_winning_move_map_o[bit] = y * 3;
-          if (c == 'x') big_winning_move_map_x[bit] = y * 3;
+          if (c == 'o') big_winning_move_map_o[bit].push_back(y * 3);
+          if (c == 'x') big_winning_move_map_x[bit].push_back(y * 3);
         }
         if (str[y * 3] == c && str[y * 3 + 1] == '.' && str[y * 3 + 2] == c) {
-          if (c == 'o') big_winning_move_map_o[bit] = y * 3 + 1;
-          if (c == 'x') big_winning_move_map_x[bit] = y * 3 + 1;
+          if (c == 'o') big_winning_move_map_o[bit].push_back(y * 3 + 1);
+          if (c == 'x') big_winning_move_map_x[bit].push_back(y * 3 + 1);
         }
         if (str[y * 3] == c && str[y * 3 + 1] == c && str[y * 3 + 2] == '.') {
-          if (c == 'o') big_winning_move_map_o[bit] = y * 3 + 2;
-          if (c == 'x') big_winning_move_map_x[bit] = y * 3 + 2;
+          if (c == 'o') big_winning_move_map_o[bit].push_back(y * 3 + 2);
+          if (c == 'x') big_winning_move_map_x[bit].push_back(y * 3 + 2);
         }
       }
       // 縦
       rep(x, 3) {
         if (str[x] == '.' && str[x + 3] == c && str[x + 6] == c) {
-          if (c == 'o') big_winning_move_map_o[bit] = x;
-          if (c == 'x') big_winning_move_map_x[bit] = x;
+          if (c == 'o') big_winning_move_map_o[bit].push_back(x);
+          if (c == 'x') big_winning_move_map_x[bit].push_back(x);
         }
         if (str[x] == c && str[x + 3] == '.' && str[x + 6] == c) {
-          if (c == 'o') big_winning_move_map_o[bit] = x + 3;
-          if (c == 'x') big_winning_move_map_x[bit] = x + 3;
+          if (c == 'o') big_winning_move_map_o[bit].push_back(x + 3);
+          if (c == 'x') big_winning_move_map_x[bit].push_back(x + 3);
         }
         if (str[x] == c && str[x + 3] == c && str[x + 6] == '.') {
-          if (c == 'o') big_winning_move_map_o[bit] = x + 6;
-          if (c == 'x') big_winning_move_map_x[bit] = x + 6;
+          if (c == 'o') big_winning_move_map_o[bit].push_back(x + 6);
+          if (c == 'x') big_winning_move_map_x[bit].push_back(x + 6);
         }
       }
       // 斜め
       if (str[0] == '.' && str[4] == c && str[8] == c) {
-        if (c == 'o') big_winning_move_map_o[bit] = 0;
-        if (c == 'x') big_winning_move_map_x[bit] = 0;
+        if (c == 'o') big_winning_move_map_o[bit].push_back(0);
+        if (c == 'x') big_winning_move_map_x[bit].push_back(0);
       }
       if (str[0] == c && str[4] == '.' && str[8] == c) {
-        if (c == 'o') big_winning_move_map_o[bit] = 4;
-        if (c == 'x') big_winning_move_map_x[bit] = 4;
+        if (c == 'o') big_winning_move_map_o[bit].push_back(4);
+        if (c == 'x') big_winning_move_map_x[bit].push_back(4);
       }
       if (str[0] == c && str[4] == c && str[8] == '.') {
-        if (c == 'o') big_winning_move_map_o[bit] = 8;
-        if (c == 'x') big_winning_move_map_x[bit] = 8;
+        if (c == 'o') big_winning_move_map_o[bit].push_back(8);
+        if (c == 'x') big_winning_move_map_x[bit].push_back(8);
       }
       if (str[2] == '.' && str[4] == c && str[6] == c) {
-        if (c == 'o') big_winning_move_map_o[bit] = 2;
-        if (c == 'x') big_winning_move_map_x[bit] = 2;
+        if (c == 'o') big_winning_move_map_o[bit].push_back(2);
+        if (c == 'x') big_winning_move_map_x[bit].push_back(2);
       }
       if (str[2] == c && str[4] == '.' && str[6] == c) {
-        if (c == 'o') big_winning_move_map_o[bit] = 4;
-        if (c == 'x') big_winning_move_map_x[bit] = 4;
+        if (c == 'o') big_winning_move_map_o[bit].push_back(4);
+        if (c == 'x') big_winning_move_map_x[bit].push_back(4);
       }
       if (str[2] == c && str[4] == c && str[6] == '.') {
-        if (c == 'o') big_winning_move_map_o[bit] = 6;
-        if (c == 'x') big_winning_move_map_x[bit] = 6;
+        if (c == 'o') big_winning_move_map_o[bit].push_back(6);
+        if (c == 'x') big_winning_move_map_x[bit].push_back(6);
       }
-      small_winning_move_map_o[bit] = big_winning_move_map_o[bit];
-      small_winning_move_map_x[bit] = big_winning_move_map_x[bit];
-
-      // TODO：個数で決まるbig_winning_moveの追加
     }
-  }
+    if (big_winning_move_map_o[bit].size())
+      small_winning_move_map_o[bit] = big_winning_move_map_o[bit][0];
+    if (big_winning_move_map_x[bit].size())
+      small_winning_move_map_x[bit] = big_winning_move_map_x[bit][0];
 
+    // unify
+    sort(all(big_winning_move_map_o[bit]));
+    sort(all(big_winning_move_map_x[bit]));
+    big_winning_move_map_o[bit].erase(unique(all(big_winning_move_map_o[bit])),
+                                      big_winning_move_map_o[bit].end());
+    big_winning_move_map_x[bit].erase(unique(all(big_winning_move_map_x[bit])),
+                                      big_winning_move_map_x[bit].end());
+  }
   //
   void dfs(int bit = 0, string str = "", int depth = 0) {
     if (depth == 9) {
@@ -315,86 +324,16 @@ class State {
   /**
    * 1手必勝判定。
    * 1手で勝ちになるアクションがあればそれを返す。なければ-1を返す。
-   * TODO：引き分け盤面対応、前計算化
    */
   actionType find_winning_move() {
-    char c = (is_x ? 'x' : 'o');
-
-    if ((big_board_index == -1 || big_board_index == 0) &&
-        big_board[0] == '.') {
-      if ((big_board[1] == c && big_board[2] == c) ||
-          (big_board[3] == c && big_board[6] == c) ||
-          (big_board[4] == c && big_board[8] == c)) {
-        auto res = find_small_winning_move(c, 0);
+    if (is_x) {
+      for (auto v : big_winning_move_map_x[string_to_bit_map[big_board]]) {
+        auto res = find_small_winning_move('x', v);
         if (res != -1) return res;
       }
-    }
-    if ((big_board_index == -1 || big_board_index == 1) &&
-        big_board[1] == '.') {
-      if ((big_board[0] == c && big_board[2] == c) ||
-          (big_board[4] == c && big_board[7] == c)) {
-        auto res = find_small_winning_move(c, 1);
-        if (res != -1) return res;
-      }
-    }
-    if ((big_board_index == -1 || big_board_index == 2) &&
-        big_board[2] == '.') {
-      if ((big_board[0] == c && big_board[1] == c) ||
-          (big_board[5] == c && big_board[8] == c) ||
-          (big_board[4] == c && big_board[6] == c)) {
-        auto res = find_small_winning_move(c, 2);
-        if (res != -1) return res;
-      }
-    }
-    if ((big_board_index == -1 || big_board_index == 3) &&
-        big_board[3] == '.') {
-      if ((big_board[4] == c && big_board[5] == c) ||
-          (big_board[0] == c && big_board[6] == c)) {
-        auto res = find_small_winning_move(c, 3);
-        if (res != -1) return res;
-      }
-    }
-    if ((big_board_index == -1 || big_board_index == 4) &&
-        big_board[4] == '.') {
-      if ((big_board[3] == c && big_board[5] == c) ||
-          (big_board[1] == c && big_board[7] == c) ||
-          (big_board[0] == c && big_board[8] == c) ||
-          (big_board[2] == c && big_board[6] == c)) {
-        auto res = find_small_winning_move(c, 4);
-        if (res != -1) return res;
-      }
-    }
-    if ((big_board_index == -1 || big_board_index == 5) &&
-        big_board[5] == '.') {
-      if ((big_board[3] == c && big_board[4] == c) ||
-          (big_board[2] == c && big_board[8] == c)) {
-        auto res = find_small_winning_move(c, 5);
-        if (res != -1) return res;
-      }
-    }
-    if ((big_board_index == -1 || big_board_index == 6) &&
-        big_board[6] == '.') {
-      if ((big_board[7] == c && big_board[8] == c) ||
-          (big_board[0] == c && big_board[3] == c) ||
-          (big_board[2] == c && big_board[4] == c)) {
-        auto res = find_small_winning_move(c, 6);
-        if (res != -1) return res;
-      }
-    }
-    if ((big_board_index == -1 || big_board_index == 7) &&
-        big_board[7] == '.') {
-      if ((big_board[6] == c && big_board[8] == c) ||
-          (big_board[1] == c && big_board[4] == c)) {
-        auto res = find_small_winning_move(c, 7);
-        if (res != -1) return res;
-      }
-    }
-    if ((big_board_index == -1 || big_board_index == 8) &&
-        big_board[8] == '.') {
-      if ((big_board[6] == c && big_board[7] == c) ||
-          (big_board[2] == c && big_board[5] == c) ||
-          (big_board[0] == c && big_board[4] == c)) {
-        auto res = find_small_winning_move(c, 8);
+    } else {
+      for (auto v : big_winning_move_map_o[string_to_bit_map[big_board]]) {
+        auto res = find_small_winning_move('o', v);
         if (res != -1) return res;
       }
     }
@@ -461,8 +400,8 @@ double playout(State& state) {
   return 1 - playout(state);
 }
 
-constexpr const double C = 1.5;             // UCB1の計算に使う定数
-constexpr const int EXPAND_THRESHOLD = 20;  // ノードを展開する閾値
+constexpr const double C = 1.0;             // UCB1の計算に使う定数
+constexpr const int EXPAND_THRESHOLD = 10;  // ノードを展開する閾値
 
 // MCTSの計算に使うノード
 class Node {
@@ -574,8 +513,16 @@ actionType exec_mcts(State& state, const int64_t time_threshold = 90) {
 
 }  // namespace montecarlo
 
+// using namespace chrono;
 int main() {
+  // auto startClock = system_clock::now();
   MapInitialize map_initialize;
+  // double time =
+  //     ((double)duration_cast<microseconds>(system_clock::now() - startClock)
+  //          .count() *
+  //      1e-6);
+  // cerr << time << endl;
+
   State state;
 
   while (1) {
