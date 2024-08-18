@@ -31,7 +31,7 @@ vector<vector<int>> big_winning_move_map_x(pow_4_9);
 array<int, pow_4_9> small_winning_move_map_o = {};
 array<int, pow_4_9> small_winning_move_map_x = {};
 // debug用
-unordered_map<int, string> bit_to_string_map;
+array<string, pow_4_9> bit_to_string_map;
 unordered_map<string, int> string_to_bit_map;
 
 class MapInitialize {
@@ -54,7 +54,16 @@ class MapInitialize {
           break;
       }
     }
-    if (cnt_o < 2 && cnt_x < 2 && !is_end) {
+    if (cnt_o < 2 && cnt_x < 2) {
+      if (is_end) {
+        small_winning_status_map[bit] = 2;
+        if (cnt_x < cnt_o)
+          big_winning_status_map[bit] = 0;
+        else if (cnt_x > cnt_o)
+          big_winning_status_map[bit] = 1;
+        else
+          big_winning_status_map[bit] = 2;
+      }
       return;
     }
 
@@ -125,9 +134,21 @@ class MapInitialize {
     }
 
     rep(ci, 2) {
-      // これで391550→265308まで減る
-      if (ci == 0 && cnt_x < 2) continue;
-      if (ci == 1 && cnt_o < 2) continue;
+      // これで391550→261692まで減る
+      if (ci == 0) {
+        if (cnt_x < 2) continue;
+        if (cnt_x == 5) {
+          rep(i, 9) if (str[i] == '.') big_winning_move_map_x[bit].push_back(i);
+          continue;
+        }
+      }
+      if (ci == 1) {
+        if (cnt_o < 2) continue;
+        if (cnt_o == 5) {
+          rep(i, 9) if (str[i] == '.') big_winning_move_map_o[bit].push_back(i);
+          continue;
+        }
+      }
       tmp_cnt++;
       char c = (ci ? 'o' : 'x');
       // 横
