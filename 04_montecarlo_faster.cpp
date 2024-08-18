@@ -14,7 +14,7 @@ inline bool chmin(T& a, T b) {
 
 /*
 原子モンテカルロで高速化
-257/8940位。
+594/8940位。
 
 TODO：
 - MCTS化

@@ -13,7 +13,7 @@ inline bool chmin(T& a, T b) {
 #pragma GCC optimize("unroll-loops")
 
 /*
-原子モンテカルロ対応。
+原始モンテカルロ対応。
 620/8940位。
 最初のプレイアウト800回弱
 
