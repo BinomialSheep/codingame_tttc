@@ -468,9 +468,9 @@ constexpr const int EXPAND_THRESHOLD = 20;  // ノードを展開する閾値
 class Node {
  private:
   State state;
-  double win_count;  // 累計価値
 
  public:
+  double win_count;  // 累計価値
   std::vector<Node> child_nodes;
   int visit_num;  // 試行回数
 
@@ -550,7 +550,8 @@ class Node {
 };
 
 // 制限時間(ms)を指定してMCTSで行動を決定する
-actionType exec_mcts(State& state, const int64_t time_threshold = 90) {
+pair<actionType, double> exec_mcts(State& state,
+                                   const int64_t time_threshold = 90) {
   Node root_node = Node(state);
   root_node.expand();
   auto time_keeper = TimeKeeper(time_threshold);
@@ -569,7 +570,10 @@ actionType exec_mcts(State& state, const int64_t time_threshold = 90) {
     cerr << legal_actions[i] << " " << n << endl;
     if (chmax(max_score, n)) idx = i;
   }
-  return legal_actions[idx];
+  double win_rate =
+      (max_score - root_node.child_nodes[idx].win_count) / max_score;
+
+  return make_pair(legal_actions[idx], win_rate);
 }
 
 }  // namespace montecarlo
@@ -577,6 +581,7 @@ actionType exec_mcts(State& state, const int64_t time_threshold = 90) {
 int main() {
   MapInitialize map_initialize;
   State state;
+  cout << fixed << setprecision(2);
 
   while (1) {
     int opp_row;
@@ -605,8 +610,9 @@ int main() {
       state.advance(40);
       continue;
     }
-
-    actionType ans = montecarlo::exec_mcts(state);
+    auto p = montecarlo::exec_mcts(state);
+    actionType ans = p.first;
+    double win_rate = p.second * 100;
     int row, col;
     if (ans == -1) {
       row = rows[0], col = cols[0];
@@ -615,7 +621,6 @@ int main() {
     }
     state.advance(row * 9 + col);
     state.print_board();
-
-    cout << row << " " << col << endl;
+    cout << row << " " << col << " 勝率：" << win_rate << "%" << endl;
   }
 }

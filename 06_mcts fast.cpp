@@ -18,6 +18,8 @@ inline bool chmin(T& a, T b) {
 /*
 高速化
 c 1.0 EXPAND_THRESHOLD = 10 210位
+c 1.2 EXPAND_THRESHOLD = 10 226位
+c 0.8 EXPAND_THRESHOLD = 10 225位
 */
 
 static uint32_t randXor() {
@@ -401,16 +403,16 @@ double playout(State& state) {
 }
 
 constexpr const double C = 1.0;             // UCB1の計算に使う定数
-constexpr const int EXPAND_THRESHOLD = 10;  // ノードを展開する閾値
+constexpr const int EXPAND_THRESHOLD = 15;  // ノードを展開する閾値
 
 // MCTSの計算に使うノード
 class Node {
  private:
   State state;
-  double win_count;  // 累計価値
 
  public:
   std::vector<Node> child_nodes;
+  double win_count;  // 累計価値
   int visit_num;  // 試行回数
 
   Node(const State& arg_state) : state(arg_state), win_count(0), visit_num(0) {}
@@ -489,7 +491,8 @@ class Node {
 };
 
 // 制限時間(ms)を指定してMCTSで行動を決定する
-actionType exec_mcts(State& state, const int64_t time_threshold = 90) {
+pair<actionType, double> exec_mcts(State& state,
+                                   const int64_t time_threshold = 90) {
   Node root_node = Node(state);
   root_node.expand();
   auto time_keeper = TimeKeeper(time_threshold);
@@ -508,7 +511,10 @@ actionType exec_mcts(State& state, const int64_t time_threshold = 90) {
     cerr << legal_actions[i] << " " << n << endl;
     if (chmax(max_score, n)) idx = i;
   }
-  return legal_actions[idx];
+  double win_rate =
+      (max_score - root_node.child_nodes[idx].win_count) / max_score;
+
+  return make_pair(legal_actions[idx], win_rate);
 }
 
 }  // namespace montecarlo
@@ -524,6 +530,7 @@ int main() {
   // cerr << time << endl;
 
   State state;
+  cout << fixed << setprecision(2);
 
   while (1) {
     int opp_row;
@@ -552,8 +559,9 @@ int main() {
       state.advance(40);
       continue;
     }
-
-    actionType ans = montecarlo::exec_mcts(state);
+    auto p = montecarlo::exec_mcts(state);
+    actionType ans = p.first;
+    double win_rate = p.second * 100;
     int row, col;
     if (ans == -1) {
       row = rows[0], col = cols[0];
@@ -562,7 +570,6 @@ int main() {
     }
     state.advance(row * 9 + col);
     state.print_board();
-
-    cout << row << " " << col << endl;
+    cout << row << " " << col << " 勝率：" << win_rate << "%" << endl;
   }
 }
