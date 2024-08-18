@@ -24,9 +24,9 @@ inline bool chmin(T& a, T b) {
 constexpr int pow_4_9 = 262144;
 array<int, pow_4_9> big_winning_status_map = {};
 array<int, pow_4_9> small_winning_status_map = {};
-// 必勝手候補
-vector<vector<int>> big_winning_move_map_o(pow_4_9);
-vector<vector<int>> big_winning_move_map_x(pow_4_9);
+// 必勝手候補（9桁のbitで入っているので注意）
+array<int, pow_4_9> big_winning_move_map_o = {};
+array<int, pow_4_9> big_winning_move_map_x = {};
 // 必勝手の1つが入る（なければ-1）
 array<int, pow_4_9> small_winning_move_map_o = {};
 array<int, pow_4_9> small_winning_move_map_x = {};
@@ -138,14 +138,14 @@ class MapInitialize {
       if (ci == 0) {
         if (cnt_x < 2) continue;
         if (cnt_x == 5) {
-          rep(i, 9) if (str[i] == '.') big_winning_move_map_x[bit].push_back(i);
+          rep(i, 9) if (str[i] == '.') big_winning_move_map_x[bit] |= 1 << i;
           continue;
         }
       }
       if (ci == 1) {
         if (cnt_o < 2) continue;
         if (cnt_o == 5) {
-          rep(i, 9) if (str[i] == '.') big_winning_move_map_o[bit].push_back(i);
+          rep(i, 9) if (str[i] == '.') big_winning_move_map_o[bit] |= 1 << i;
           continue;
         }
       }
@@ -155,88 +155,92 @@ class MapInitialize {
       rep(y, 3) {
         if (str[y * 3] == '.' && str[y * 3 + 1] == c && str[y * 3 + 2] == c) {
           if (c == 'o')
-            big_winning_move_map_o[bit].push_back(y * 3);
+            big_winning_move_map_o[bit] |= 1 << (y * 3);
           else
-            big_winning_move_map_x[bit].push_back(y * 3);
+            big_winning_move_map_x[bit] |= 1 << (y * 3);
         } else if (str[y * 3] == c && str[y * 3 + 1] == '.' &&
                    str[y * 3 + 2] == c) {
           if (c == 'o')
-            big_winning_move_map_o[bit].push_back(y * 3 + 1);
+            big_winning_move_map_o[bit] |= 1 << (y * 3 + 1);
           else
-            big_winning_move_map_x[bit].push_back(y * 3 + 1);
+            big_winning_move_map_x[bit] |= 1 << (y * 3 + 1);
         } else if (str[y * 3] == c && str[y * 3 + 1] == c &&
                    str[y * 3 + 2] == '.') {
           if (c == 'o')
-            big_winning_move_map_o[bit].push_back(y * 3 + 2);
+            big_winning_move_map_o[bit] |= 1 << (y * 3 + 2);
           else
-            big_winning_move_map_x[bit].push_back(y * 3 + 2);
+            big_winning_move_map_x[bit] |= 1 << (y * 3 + 2);
         }
       }
       // 縦
       rep(x, 3) {
         if (str[x] == '.' && str[x + 3] == c && str[x + 6] == c) {
           if (c == 'o')
-            big_winning_move_map_o[bit].push_back(x);
+            big_winning_move_map_o[bit] |= 1 << x;
           else
-            big_winning_move_map_x[bit].push_back(x);
+            big_winning_move_map_x[bit] |= 1 << x;
         } else if (str[x] == c && str[x + 3] == '.' && str[x + 6] == c) {
           if (c == 'o')
-            big_winning_move_map_o[bit].push_back(x + 3);
+            big_winning_move_map_o[bit] |= 1 << (x + 3);
           else
-            big_winning_move_map_x[bit].push_back(x + 3);
+            big_winning_move_map_x[bit] |= 1 << (x + 3);
         } else if (str[x] == c && str[x + 3] == c && str[x + 6] == '.') {
           if (c == 'o')
-            big_winning_move_map_o[bit].push_back(x + 6);
+            big_winning_move_map_o[bit] |= 1 << (x + 6);
           else
-            big_winning_move_map_x[bit].push_back(x + 6);
+            big_winning_move_map_x[bit] |= 1 << (x + 6);
         }
       }
       // 斜め
       if (str[0] == '.' && str[4] == c && str[8] == c) {
         if (c == 'o')
-          big_winning_move_map_o[bit].push_back(0);
+          big_winning_move_map_o[bit] |= 1;
         else
-          big_winning_move_map_x[bit].push_back(0);
+          big_winning_move_map_x[bit] |= 1;
       } else if (str[0] == c && str[4] == '.' && str[8] == c) {
         if (c == 'o')
-          big_winning_move_map_o[bit].push_back(4);
+          big_winning_move_map_o[bit] |= 1 << 4;
         else
-          big_winning_move_map_x[bit].push_back(4);
+          big_winning_move_map_x[bit] |= 1 << 4;
       } else if (str[0] == c && str[4] == c && str[8] == '.') {
         if (c == 'o')
-          big_winning_move_map_o[bit].push_back(8);
+          big_winning_move_map_o[bit] |= 1 << 8;
         else
-          big_winning_move_map_x[bit].push_back(8);
+          big_winning_move_map_x[bit] |= 1 << 8;
       }
       if (str[2] == '.' && str[4] == c && str[6] == c) {
         if (c == 'o')
-          big_winning_move_map_o[bit].push_back(2);
+          big_winning_move_map_o[bit] |= 1 << 2;
         else
-          big_winning_move_map_x[bit].push_back(2);
+          big_winning_move_map_x[bit] |= 1 << 2;
       } else if (str[2] == c && str[4] == '.' && str[6] == c) {
         if (c == 'o')
-          big_winning_move_map_o[bit].push_back(4);
+          big_winning_move_map_o[bit] |= 1 << 4;
         else
-          big_winning_move_map_x[bit].push_back(4);
+          big_winning_move_map_x[bit] |= 1 << 4;
       } else if (str[2] == c && str[4] == c && str[6] == '.') {
         if (c == 'o')
-          big_winning_move_map_o[bit].push_back(6);
+          big_winning_move_map_o[bit] |= 1 << 6;
         else
-          big_winning_move_map_x[bit].push_back(6);
+          big_winning_move_map_x[bit] |= 1 << 6;
       }
     }
-    if (big_winning_move_map_o[bit].size())
-      small_winning_move_map_o[bit] = big_winning_move_map_o[bit][0];
-    if (big_winning_move_map_x[bit].size())
-      small_winning_move_map_x[bit] = big_winning_move_map_x[bit][0];
-
-    // unify
-    sort(all(big_winning_move_map_o[bit]));
-    sort(all(big_winning_move_map_x[bit]));
-    big_winning_move_map_o[bit].erase(unique(all(big_winning_move_map_o[bit])),
-                                      big_winning_move_map_o[bit].end());
-    big_winning_move_map_x[bit].erase(unique(all(big_winning_move_map_x[bit])),
-                                      big_winning_move_map_x[bit].end());
+    if (big_winning_move_map_o[bit]) {
+      rep(i, 9) {
+        if (big_winning_move_map_o[bit] >> i & 1) {
+          small_winning_move_map_o[bit] = i;
+          break;
+        }
+      }
+    }
+    if (big_winning_move_map_x[bit]) {
+      rep(i, 9) {
+        if (big_winning_move_map_x[bit] >> i & 1) {
+          small_winning_move_map_x[bit] = i;
+          break;
+        }
+      }
+    }
   }
   //
   void dfs(int bit = 0, string str = "", int depth = 0) {
