@@ -283,6 +283,22 @@ int main() {
     cout << small_winning_move_map_x[i] << endl;
   }
 
+  vector<string> board = {
+      "a",
+      "o.x.....o",
+      "b",
+      "......xx.",
+  };
+
+  int moves = big_winning_move_map_o[string_to_bit_map["o.o.xxo.."]];
+  cerr << moves << endl;
+  rep(i, 9) {
+    if (moves >> i & 1) {
+      auto res = small_winning_move_map_o[string_to_bit_map[board[i]]];
+      cerr << i << " " << board[i] << " " << res << endl;
+    }
+  }
+
   assert(big_winning_status_map[string_to_bit_map["....x...o"]] == 3);
   assert(big_winning_status_map[string_to_bit_map["ooo......"]] == 0);
   assert(big_winning_status_map[string_to_bit_map["o...ox..o"]] == 0);
