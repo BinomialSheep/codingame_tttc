@@ -19,7 +19,6 @@ inline bool chmin(T& a, T b) {
 
 /*
 mcts-solverを実装する
-178位
 */
 
 static uint32_t randXor() {
@@ -528,7 +527,7 @@ class Node {
   WinningStatus winning_status;
   int must_lose_count;
   int must_draw_count;
-  int action_count;  // legal_actions.size
+  int action_count;
 
   Node(State& arg_state)
       : state(arg_state),
@@ -540,14 +539,6 @@ class Node {
 
   // ノードの評価を行う
   float evaluate() {
-    if (winning_status != WinningStatus::NONE) {
-      cerr << "呼ばれないはず" << endl;
-      state.print_board();
-      cerr << win_count << " " << visit_num << endl;
-      cerr << must_lose_count << " " << must_draw_count << " " << action_count
-           << endl;
-      assert(false);
-    }
     if (state.is_done()) {
       float value;
       switch (state.get_winning_status()) {
@@ -636,12 +627,12 @@ class Node {
 
     double best_value = -INF;
     int best_idx = -1;
-    // vector<int> delete_idx;
+    vector<int> delete_idxes;
     rep(i, child_nodes.size()) {
       const auto& child_node = child_nodes[i];
       if (child_node.winning_status != WinningStatus::NONE) {
         // 決着済みのノードは評価しない
-        // delete_idx.push_back(i);
+        delete_idxes.push_back(i);
         continue;
       }
       double ucb1_value =
@@ -652,9 +643,9 @@ class Node {
         best_value = ucb1_value;
       }
     }
-    // TODO：決着済みのノードを後ろから削除する
     assert(best_idx != -1);
-
+    // Node& ret = child_nodes[best_idx];
+    // return ret;
     return child_nodes[best_idx];
   }
 };
@@ -685,6 +676,7 @@ pair<actionType, double> exec_mcts(Node& root_node,
   rep(i, legal_actions.size()) {
     int n = root_node.child_nodes[i].visit_num;
     cerr << legal_actions[i] << " " << n << endl;
+    print_winning_status(root_node.child_nodes[i].winning_status);
     if (chmax(max_score, n)) idx = i;
     if (root_node.child_nodes[i].winning_status == WinningStatus::LOSE)
       win_idx = i;
