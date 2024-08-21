@@ -394,6 +394,18 @@ class State {
       14, 12, 10, 8,  6,  10, 8,  6,  10, 8,  6,  4,  2,  0,  4,  2,  0,
       4,  2,  0,  16, 14, 12, 16, 14, 12, 16, 14, 12, 10, 8,  6,  10, 8,
       6,  10, 8,  6,  4,  2,  0,  4,  2,  0,  4,  2,  0};
+  inline static const vector<int> big_board_shift_1 = {
+      1 << (16 - 2 * 0), 1 << (16 - 2 * 1), 1 << (16 - 2 * 2),
+      1 << (16 - 2 * 3), 1 << (16 - 2 * 4), 1 << (16 - 2 * 5),
+      1 << (16 - 2 * 6), 1 << (16 - 2 * 7), 1 << (16 - 2 * 8)};
+  inline static const vector<int> big_board_shift_2 = {
+      2 << (16 - 2 * 0), 2 << (16 - 2 * 1), 2 << (16 - 2 * 2),
+      2 << (16 - 2 * 3), 2 << (16 - 2 * 4), 2 << (16 - 2 * 5),
+      2 << (16 - 2 * 6), 2 << (16 - 2 * 7), 2 << (16 - 2 * 8)};
+  inline static const vector<int> big_board_shift_3 = {
+      3 << (16 - 2 * 0), 3 << (16 - 2 * 1), 3 << (16 - 2 * 2),
+      3 << (16 - 2 * 3), 3 << (16 - 2 * 4), 3 << (16 - 2 * 5),
+      3 << (16 - 2 * 6), 3 << (16 - 2 * 7), 3 << (16 - 2 * 8)};
   // big boardのindexから、そのbig boardの左上のboard idxを引く
   inline static const vector<int> big_board_to_board_start = {
       0, 3, 6, 27, 30, 33, 54, 57, 60};
@@ -408,12 +420,12 @@ class State {
   // 次にどのゲームを着手するか
   int big_board_index = -1;
   // ミニゲーム自体の勝敗 (o, x, ., d := draw)
-  string big_board;
+  // string big_board;
   int big_board_int;
 
   State() {
     // rep(i, 9) board.push_back(string(9, '.'));
-    big_board = string(9, '.');
+    // big_board = string(9, '.');
     is_x = true;
     rep(i, 9) board_int.emplace_back(0);
     big_board_int = 0;
@@ -433,7 +445,8 @@ class State {
 
     check_small_winning_status();
     big_board_index = action_to_next_big_board[action];
-    if (big_board[big_board_index] != '.') big_board_index = -1;
+    if (big_board_int & big_board_shift_3[big_board_index])
+      big_board_index = -1;
   }
 
   // 現在のプレイヤーが可能な行動を全て取得する
@@ -442,7 +455,7 @@ class State {
 
     if (big_board_index == -1) {
       rep(i, 9) {
-        if (big_board[i] != '.') continue;
+        if (big_board_int & big_board_shift_3[i]) continue;
         rep(j, 9) {
           if ((board_int[i] & (3 << (j * 2))) == 0) {
             int pos = big_board_to_board_start[i] + small_board_start_i_idff[j];
@@ -467,13 +480,13 @@ class State {
 
     switch (small_winning_status_map[bit]) {
       case 0:
-        big_board[big_board_index] = 'o';
+        big_board_int |= big_board_shift_1[big_board_index];
         break;
       case 1:
-        big_board[big_board_index] = 'x';
+        big_board_int |= big_board_shift_2[big_board_index];
         break;
       case 2:
-        big_board[big_board_index] = 'd';
+        big_board_int |= big_board_shift_3[big_board_index];
         break;
       default:
         break;
@@ -485,8 +498,10 @@ class State {
    * 1手で勝ちになるアクションがあればそれを返す。なければ-1を返す。
    */
   actionType find_winning_move() {
+    string rev = bit_to_string_map[big_board_int];
+    reverse(all(rev));
     if (is_x) {
-      int moves = big_winning_move_map_x[string_to_bit_map[big_board]];
+      int moves = big_winning_move_map_x[string_to_bit_map[rev]];
       if (moves == 0) return -1;
       rep(i, 9) {
         if (moves >> i & 1) {
@@ -495,7 +510,7 @@ class State {
         }
       }
     } else {
-      int moves = big_winning_move_map_o[string_to_bit_map[big_board]];
+      int moves = big_winning_move_map_o[string_to_bit_map[rev]];
       if (moves == 0) return -1;
       rep(i, 9) {
         if (moves >> i & 1) {
@@ -513,7 +528,7 @@ class State {
 
   // 勝敗情報を取得する
   WinningStatus get_winning_status() {
-    switch (big_winning_status_map[string_to_bit_map[big_board]]) {
+    switch (big_winning_status_map[big_board_int]) {
       case 0:
         return (is_x ? WinningStatus::LOSE : WinningStatus::WIN);
       case 1:
@@ -537,8 +552,10 @@ class State {
       }
       cerr << endl;
     }
+    string now_big_board = bit_to_string_map[big_board_int];
+    reverse(all(now_big_board));
     rep(i, 3) {
-      rep(j, 3) cerr << big_board[i * 3 + j];
+      rep(j, 3) cerr << now_big_board[i * 3 + j];
       cerr << endl;
     }
     cerr << "big_board_index: " << big_board_index << endl;
