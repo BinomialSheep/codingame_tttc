@@ -28,8 +28,8 @@ array<int, pow_4_9> small_winning_move_map_x = {};
 // debug用
 array<string, pow_4_9> bit_to_string_map;
 unordered_map<string, int> string_to_bit_map;
-unordered_map<int, int> real_to_compressed_bit_map;
-unordered_map<int, int> compressed_to_real_bit_map;
+// unordered_map<int, int> real_to_compressed_bit_map;
+// array<int, pow_4_9> compressed_to_real_bit_map;
 
 class MapInitialize {
  private:
@@ -242,7 +242,7 @@ class MapInitialize {
   //
 
   void set_intercomversion_real_bit_and_compressed_bit(const int compressed,
-                                                       const string& str) {
+                                                       string& str) {
     int real = 0;
     rep(i, 9) {
       switch (str[i]) {
@@ -262,13 +262,14 @@ class MapInitialize {
           break;
       }
     }
-    real_to_compressed_bit_map[real] = compressed;
-    compressed_to_real_bit_map[compressed] = real;
+    // real_to_compressed_bit_map[real] = compressed;
+    // compressed_to_real_bit_map[compressed] = real;
   }
 
   //
   void dfs(int bit = 0, string str = "", int depth = 0) {
     if (depth == 9) {
+      reverse(all(str));
       string_to_bit_map[str] = bit;
       bit_to_string_map[bit] = str;
 
@@ -276,7 +277,7 @@ class MapInitialize {
       set_big_winning_move_map(bit, str);
 
       // bitboard上のbit値と今の座圧したbit値の相互変換
-      set_intercomversion_real_bit_and_compressed_bit(bit, str);
+      // set_intercomversion_real_bit_and_compressed_bit(bit, str);
 
       return;
     }
@@ -366,10 +367,8 @@ int main() {
   assert(small_winning_status_map[string_to_bit_map["ddddddddd"]] == 2);
   assert(small_winning_status_map[string_to_bit_map["ddddddddo"]] == 2);
   assert(small_winning_status_map[string_to_bit_map["ddddddddx"]] == 2);
-  assert(compressed_to_real_bit_map[string_to_bit_map["dd..x...o"]] ==
-         3 + 3 * 4 + 2 * 256 + 1 * 65536);
-  assert(compressed_to_real_bit_map[string_to_bit_map[".oxox...."]] ==
-         1 * 4 + 2 * 16 + 1 * 64 + 2 * 256);
+  assert(string_to_bit_map["dd..x...o"] == 3 + 3 * 4 + 2 * 256 + 1 * 65536);
+  assert(string_to_bit_map[".oxox...."] == 1 * 4 + 2 * 16 + 1 * 64 + 2 * 256);
   //   for (auto [k, v] : big_winning_status_map) {
   //     if (++cnt == 20) break;
   //     cout << bit_to_string_map[k] << " " << k << " " << v << endl;
