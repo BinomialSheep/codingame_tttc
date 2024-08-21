@@ -20,7 +20,7 @@ inline bool chmin(T& a, T b) {
 /*
 bitboard化
 小ボードだけ：Gold153位
-大ボードも：
+大ボードも：Gold129位
 */
 
 static uint32_t randXor() {
@@ -379,15 +379,15 @@ constexpr const ScoreType INF = 1000000000LL;
 class State {
  private:
   inline static const vector<int> action_to_now_big_board = {
-      0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 0, 0,
-      1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 3, 3, 3, 4, 4, 4,
-      5, 5, 5, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8,
-      6, 6, 6, 7, 7, 7, 8, 8, 8, 6, 6, 6, 7, 7, 7, 8, 8, 8};
+      8, 8, 8, 7, 7, 7, 6, 6, 6, 8, 8, 8, 7, 7, 7, 6, 6, 6, 8, 8, 8,
+      7, 7, 7, 6, 6, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 5, 5, 5, 4, 4, 4,
+      3, 3, 3, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 1, 1, 1, 0, 0, 0,
+      2, 2, 2, 1, 1, 1, 0, 0, 0, 2, 2, 2, 1, 1, 1, 0, 0, 0};
   inline static const vector<int> action_to_next_big_board = {
-      0, 1, 2, 0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5, 3, 4, 5, 6, 7, 8,
-      6, 7, 8, 6, 7, 8, 0, 1, 2, 0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5,
-      3, 4, 5, 6, 7, 8, 6, 7, 8, 6, 7, 8, 0, 1, 2, 0, 1, 2, 0, 1, 2,
-      3, 4, 5, 3, 4, 5, 3, 4, 5, 6, 7, 8, 6, 7, 8, 6, 7, 8};
+      8, 7, 6, 8, 7, 6, 8, 7, 6, 5, 4, 3, 5, 4, 3, 5, 4, 3, 2, 1, 0,
+      2, 1, 0, 2, 1, 0, 8, 7, 6, 8, 7, 6, 8, 7, 6, 5, 4, 3, 5, 4, 3,
+      5, 4, 3, 2, 1, 0, 2, 1, 0, 2, 1, 0, 8, 7, 6, 8, 7, 6, 8, 7, 6,
+      5, 4, 3, 5, 4, 3, 5, 4, 3, 2, 1, 0, 2, 1, 0, 2, 1, 0};
   inline static const vector<int> action_to_small_board_digit = {
       16, 14, 12, 16, 14, 12, 16, 14, 12, 10, 8,  6,  10, 8,  6,  10, 8,
       6,  4,  2,  0,  4,  2,  0,  4,  2,  0,  16, 14, 12, 16, 14, 12, 16,
@@ -395,20 +395,20 @@ class State {
       4,  2,  0,  16, 14, 12, 16, 14, 12, 16, 14, 12, 10, 8,  6,  10, 8,
       6,  10, 8,  6,  4,  2,  0,  4,  2,  0,  4,  2,  0};
   inline static const vector<int> big_board_shift_1 = {
-      1 << (16 - 2 * 0), 1 << (16 - 2 * 1), 1 << (16 - 2 * 2),
-      1 << (16 - 2 * 3), 1 << (16 - 2 * 4), 1 << (16 - 2 * 5),
-      1 << (16 - 2 * 6), 1 << (16 - 2 * 7), 1 << (16 - 2 * 8)};
+      1 << (16 - 2 * 8), 1 << (16 - 2 * 7), 1 << (16 - 2 * 6),
+      1 << (16 - 2 * 5), 1 << (16 - 2 * 4), 1 << (16 - 2 * 3),
+      1 << (16 - 2 * 2), 1 << (16 - 2 * 1), 1 << (16 - 2 * 0)};
   inline static const vector<int> big_board_shift_2 = {
-      2 << (16 - 2 * 0), 2 << (16 - 2 * 1), 2 << (16 - 2 * 2),
-      2 << (16 - 2 * 3), 2 << (16 - 2 * 4), 2 << (16 - 2 * 5),
-      2 << (16 - 2 * 6), 2 << (16 - 2 * 7), 2 << (16 - 2 * 8)};
+      2 << (16 - 2 * 8), 2 << (16 - 2 * 7), 2 << (16 - 2 * 6),
+      2 << (16 - 2 * 5), 2 << (16 - 2 * 4), 2 << (16 - 2 * 3),
+      2 << (16 - 2 * 2), 2 << (16 - 2 * 1), 2 << (16 - 2 * 0)};
   inline static const vector<int> big_board_shift_3 = {
-      3 << (16 - 2 * 0), 3 << (16 - 2 * 1), 3 << (16 - 2 * 2),
-      3 << (16 - 2 * 3), 3 << (16 - 2 * 4), 3 << (16 - 2 * 5),
-      3 << (16 - 2 * 6), 3 << (16 - 2 * 7), 3 << (16 - 2 * 8)};
+      3 << (16 - 2 * 8), 3 << (16 - 2 * 7), 3 << (16 - 2 * 6),
+      3 << (16 - 2 * 5), 3 << (16 - 2 * 4), 3 << (16 - 2 * 3),
+      3 << (16 - 2 * 2), 3 << (16 - 2 * 1), 3 << (16 - 2 * 0)};
   // big boardのindexから、そのbig boardの左上のboard idxを引く
   inline static const vector<int> big_board_to_board_start = {
-      0, 3, 6, 27, 30, 33, 54, 57, 60};
+      60, 57, 54, 33, 30, 27, 6, 3, 0};
   // bit boardへの移行過程
   inline static const vector<int> small_board_start_i_idff = {
       20, 19, 18, 11, 10, 9, 2, 1, 0};
@@ -498,10 +498,8 @@ class State {
    * 1手で勝ちになるアクションがあればそれを返す。なければ-1を返す。
    */
   actionType find_winning_move() {
-    string rev = bit_to_string_map[big_board_int];
-    reverse(all(rev));
     if (is_x) {
-      int moves = big_winning_move_map_x[string_to_bit_map[rev]];
+      int moves = big_winning_move_map_x[big_board_int];
       if (moves == 0) return -1;
       rep(i, 9) {
         if (moves >> i & 1) {
@@ -510,7 +508,7 @@ class State {
         }
       }
     } else {
-      int moves = big_winning_move_map_o[string_to_bit_map[rev]];
+      int moves = big_winning_move_map_o[big_board_int];
       if (moves == 0) return -1;
       rep(i, 9) {
         if (moves >> i & 1) {
@@ -544,7 +542,8 @@ class State {
 
   void print_board() {
     vector<string> now_bord;
-    rep(i, 9) now_bord.emplace_back(bit_to_string_map[board_int[i]]);
+    for (int i = 8; i >= 0; i--)
+      now_bord.emplace_back(bit_to_string_map[board_int[i]]);
     rep(i, 9) {
       rep(j, 9) {
         cerr << now_bord[action_to_now_big_board[i * 9 + j]]
@@ -553,7 +552,6 @@ class State {
       cerr << endl;
     }
     string now_big_board = bit_to_string_map[big_board_int];
-    reverse(all(now_big_board));
     rep(i, 3) {
       rep(j, 3) cerr << now_big_board[i * 3 + j];
       cerr << endl;
@@ -591,7 +589,7 @@ constexpr const int EXPAND_THRESHOLD = 10;  // ノードを展開する閾値
 class Node {
  public:
   State state;
-  std::vector<Node> child_nodes;
+  vector<Node> child_nodes;
   double win_count;  // 累計価値
   int visit_num;     // 試行回数
   // mcts-solver用
