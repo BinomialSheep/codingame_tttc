@@ -239,34 +239,7 @@ class MapInitialize {
       }
     }
   }
-  //
 
-  void set_intercomversion_real_bit_and_compressed_bit(const int compressed,
-                                                       string& str) {
-    int real = 0;
-    rep(i, 9) {
-      switch (str[i]) {
-        case '.':
-          break;
-        case 'o':
-          real |= 1 << (i * 2);
-          break;
-        case 'x':
-          real |= 2 << (i * 2);
-          break;
-        case 'd':
-          real |= 3 << (i * 2);
-          break;
-        default:
-          assert(false);
-          break;
-      }
-    }
-    // real_to_compressed_bit_map[real] = compressed;
-    // compressed_to_real_bit_map[compressed] = real;
-  }
-
-  //
   void dfs(int bit = 0, string str = "", int depth = 0) {
     if (depth == 9) {
       reverse(all(str));
@@ -275,9 +248,6 @@ class MapInitialize {
 
       set_winning_status_map(bit, str);
       set_big_winning_move_map(bit, str);
-
-      // bitboard上のbit値と今の座圧したbit値の相互変換
-      // set_intercomversion_real_bit_and_compressed_bit(bit, str);
 
       return;
     }
