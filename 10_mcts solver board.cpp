@@ -20,7 +20,7 @@ inline bool chmin(T& a, T b) {
 /*
 bitboard化
 小ボードだけ：Gold153位
-大ボードも：Gold129位
+大ボードも：Gold111位
 */
 
 static uint32_t randXor() {
@@ -415,21 +415,14 @@ class State {
 
  public:
   // vector<string> board;
-  vector<int> board_int;
-  bool is_x;
+  array<int, 9> board_int = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+  bool is_x = true;
   // 次にどのゲームを着手するか
   int big_board_index = -1;
   // ミニゲーム自体の勝敗 (o, x, ., d := draw)
-  // string big_board;
-  int big_board_int;
+  int big_board_int = 0;
 
-  State() {
-    // rep(i, 9) board.push_back(string(9, '.'));
-    // big_board = string(9, '.');
-    is_x = true;
-    rep(i, 9) board_int.emplace_back(0);
-    big_board_int = 0;
-  }
+  State() {}
 
   // 指定したactionでゲームを1ターン進め、次のプレイヤー視点の盤面にする
   void advance(actionType action) {
@@ -458,16 +451,16 @@ class State {
         if (big_board_int & big_board_shift_3[i]) continue;
         rep(j, 9) {
           if ((board_int[i] & (3 << (j * 2))) == 0) {
-            int pos = big_board_to_board_start[i] + small_board_start_i_idff[j];
-            ret.push_back(pos);
+            ret.emplace_back(big_board_to_board_start[i] +
+                             small_board_start_i_idff[j]);
           }
         }
       }
     } else {
-      int start = big_board_to_board_start[big_board_index];
       rep(j, 9) {
         if ((board_int[big_board_index] & (3 << (j * 2))) == 0) {
-          ret.push_back(start + small_board_start_i_idff[j]);
+          ret.emplace_back(big_board_to_board_start[big_board_index] +
+                           small_board_start_i_idff[j]);
         }
       }
     }
@@ -798,14 +791,7 @@ Node advane_node(Node& root_node, actionType action) {
 
 // using namespace chrono;
 int main() {
-  // auto startClock = system_clock::now();
   MapInitialize map_initialize;
-  // double time =
-  //     ((double)duration_cast<microseconds>(system_clock::now() -
-  //     startClock)
-  //          .count() *
-  //      1e-6);
-  // cerr << time << endl;
 
   State state;
   cout << fixed << setprecision(2);
