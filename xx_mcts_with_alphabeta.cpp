@@ -440,6 +440,17 @@ class State {
       big_board_index = -1;
   }
 
+  void retrive(actionType action, int last_big_board_index) {
+    big_board_index = action_to_now_big_board[action];
+    board_int[big_board_index] &= ~(1 << action_to_small_board_digit[action]);
+    board_int[big_board_index] &= ~(2 << action_to_small_board_digit[action]);
+    big_board_int &= ~(big_board_shift_1[big_board_index]);
+    big_board_int &= ~(big_board_shift_2[big_board_index]);
+
+    is_x ^= 1;
+    big_board_index = last_big_board_index;
+  }
+
   // 現在のプレイヤーが可能な行動を全て取得する
   vector<actionType> legal_actions() {
     vector<actionType> ret;
@@ -531,6 +542,15 @@ class State {
 
   bool is_done() { return get_winning_status() != WinningStatus::NONE; }
 
+  int count_puttable() {
+    int ret = 0;
+    rep(i, 9) {
+      if (big_board_int & (3 << (i * 2))) continue;
+      rep(j, 9) if ((board_int[i] & (3 << (j * 2))) == 0) ret++;
+    }
+    return ret;
+  }
+
   void print_board() {
     vector<string> now_bord;
     for (int i = 8; i >= 0; i--)
@@ -552,9 +572,33 @@ class State {
   }
 };
 
-namespace montecarlo {
+// alphabetaのためのスコア計算
+float alpha_beta(State& state, float alpha, float beta) {
+  WinningStatus winningStatus = state.get_winning_status();
+  if (winningStatus == WinningStatus::WIN) return 1;
+  if (winningStatus == WinningStatus::LOSE) return 0;
+  if (winningStatus == WinningStatus::DRAW) return 0.5;
+  // 必勝手があれば終わり
+  if (state.find_winning_move() != -1) return 1;
 
-float playout(State& state) {
+  auto legal_actions = state.legal_actions();
+
+  int last_big_board_index = state.big_board_index;
+
+  for (const auto action : legal_actions) {
+    state.advance(action);
+    float score = 1 - alpha_beta(state, 1 - beta, 1 - alpha);
+    state.retrive(action, last_big_board_index);
+    chmax(alpha, score);
+    // if (alpha >= beta) return alpha;
+  }
+  return alpha;
+}
+
+namespace montecarlo {
+int orig_turn = 0;
+
+float playout(State& state, int turn) {
   // 既に決着しているならそれを返す
   WinningStatus winningStatus = state.get_winning_status();
   if (winningStatus == WinningStatus::WIN) return 1;
@@ -571,10 +615,10 @@ float playout(State& state) {
   // ランダムプレイ
   actionType action = legal_actions[randXor() % (legal_actions.size())];
   state.advance(action);
-  return 1 - playout(state);
+  return 1 - playout(state, turn + 1);
 }
 
-constexpr const double C = 0.5;             // UCB1の計算に使う定数
+constexpr const double C = 1.0;             // UCB1の計算に使う定数
 constexpr const int EXPAND_THRESHOLD = 10;  // ノードを展開する閾値
 
 // MCTSの計算に使うノード
@@ -600,7 +644,7 @@ class Node {
         action_count(0) {}
 
   // ノードの評価を行う
-  float evaluate() {
+  float evaluate(int turn) {
     if (state.is_done()) {
       float value;
       switch (state.get_winning_status()) {
@@ -621,10 +665,11 @@ class Node {
       visit_num++;
       return value;
     }
+
     // 葉ノードの場合
     if (child_nodes.empty()) {
       State next_state = state;
-      float value = playout(next_state);
+      float value = playout(next_state, turn + 1);
       win_count += value;
       visit_num++;
       // 閾値回試行したらノードを展開する
@@ -636,7 +681,7 @@ class Node {
     } else {
       // 葉ノード以外では子ノードの値
       Node& next_node = nextChildNode();
-      float value = 1 - next_node.evaluate();
+      float value = 1 - next_node.evaluate(turn + 1);
 
       win_count += value;
       visit_num++;
@@ -682,7 +727,7 @@ class Node {
   Node& nextChildNode() {
     for (auto& child_node : child_nodes) {
       // 試行回数0のノードは優先的に選択する
-      if (child_node.visit_num < 5) return child_node;
+      if (child_node.visit_num == 0) return child_node;
     }
     int sum_n = 0;  // 全ノードの試行回数の総和
     for (const auto& child_node : child_nodes) sum_n += child_node.visit_num;
@@ -722,23 +767,41 @@ class Node {
 };
 
 // 制限時間(ms)を指定してMCTSで行動を決定する
-pair<actionType, double> exec_mcts(Node& root_node,
+pair<actionType, double> exec_mcts(Node& root_node, int turn,
                                    const int64_t time_threshold = 90) {
-  if (root_node.child_nodes.empty()) root_node.expand();
   auto time_keeper = TimeKeeper(time_threshold);
-  int turn;
+  int for_count;
+  // cerr << "puttable: " << root_node.state.count_puttable() << endl;
+  if (root_node.state.count_puttable() < 15) {
+    int best_action = -1;
+    float alpha = -2;
+    float beta = 1;
+    State& state = root_node.state;
+    int last_big_board_index = state.big_board_index;
+    for (const auto action : state.legal_actions()) {
+      state.advance(action);
+      float score = 1 - alpha_beta(state, 1 - beta, 1 - alpha);
+      state.retrive(action, last_big_board_index);
+      cerr << orig_turn << " " << action << " " << score << endl;
+      if (chmax(alpha, score)) best_action = action;
+    }
+    cerr << best_action << " " << alpha << endl;
 
-  for (turn = 1;; turn++) {
-    if (turn & (1 << 7) && time_keeper.isTimeOver()) break;
+    return make_pair(best_action, alpha);
+  }
+
+  if (root_node.child_nodes.empty()) root_node.expand();
+  for (for_count = 1;; for_count++) {
+    if (for_count & (1 << 7) && time_keeper.isTimeOver()) break;
     if (root_node.winning_status != WinningStatus::NONE) {
       print_winning_status(root_node.winning_status);
       break;
     }
-    root_node.evaluate();
+    root_node.evaluate(turn);
   }
   vector<actionType> legal_actions = root_node.state.legal_actions();
 
-  cerr << "turn: " << turn << endl;
+  cerr << "for_count: " << for_count << endl;
 
   int idx = 0;
   int max_score = -1e9;
@@ -795,6 +858,7 @@ int main() {
   State state;
   cout << fixed << setprecision(2);
   montecarlo::Node root_node(state);
+  int turn = 0;
 
   while (1) {
     int opp_row;
@@ -805,7 +869,9 @@ int main() {
     } else {
       // state.advance(opp_row * 9 + opp_col);
       root_node = montecarlo::advane_node(root_node, opp_row * 9 + opp_col);
+      ++turn;
     }
+    ++turn;
     cin.ignore();
     int N;
     cin >> N;
@@ -824,7 +890,9 @@ int main() {
       root_node = montecarlo::advane_node(root_node, 40);
       continue;
     }
-    auto p = montecarlo::exec_mcts(root_node);
+    montecarlo::orig_turn = turn;
+    cerr << montecarlo::orig_turn << endl;
+    auto p = montecarlo::exec_mcts(root_node, turn);
     actionType ans = p.first;
     double win_rate = p.second * 100;
     int row, col;
