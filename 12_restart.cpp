@@ -1,7 +1,7 @@
 /**
  * 12_restart.cpp
  *
- * 前回の反省点を踏まえて再設計しなおす
+ * FIX_ME!!!!!!!!!!
  */
 #include <bits/stdc++.h>
 using namespace std;
@@ -587,7 +587,7 @@ constexpr const int EXPAND_THRESHOLD = 10;  // ノードを展開する閾値
 class Node {
  public:
   State state;
-  vector<Node> child_nodes;
+  list<Node> child_nodes;
   double win_count;  // 累計価値
   int visit_num;     // 試行回数
   // mcts-solver用
@@ -694,36 +694,44 @@ class Node {
     for (const auto& child_node : child_nodes) sum_n += child_node.visit_num;
 
     double best_value = -INF;
-    int best_idx = -1;
+    // int best_idx = -1;
     vector<int> delete_idxes;
-    rep(i, child_nodes.size()) {
-      const auto& child_node = child_nodes[i];
-      if (child_node.winning_status != WinningStatus::NONE) {
-        // 決着済みのノードは評価しない
-        delete_idxes.push_back(i);
-        continue;
-      }
+
+    list<montecarlo::Node>::iterator best_it;
+
+    for (auto it = child_nodes.begin(); it != child_nodes.end();) {
+      //   rep(i, child_nodes.size()) {
+      const auto& child_node = *it;
+      //   if (child_node.winning_status != WinningStatus::NONE) {
+      //     // 決着済みのノードは今後評価しない
+      //     it = child_nodes.erase(it);
+      //     continue;
+      //   }
       double ucb1_value = 1. -
                           child_node.win_count / (double)child_node.visit_num +
                           C * sqrt(2. * log(sum_n) / child_node.visit_num);
       if (ucb1_value > best_value) {
-        best_idx = i;
+        best_it = it;
         best_value = ucb1_value;
       }
+      ++it;
     }
-    if (best_idx == -1) {
-      cerr << "best_idx == -1" << endl;
-      cerr << child_nodes.size() << " " << delete_idxes.size() << endl;
-      cerr << must_lose_count << " " << must_draw_count << " " << action_count
-           << endl;
-      for (auto i : delete_idxes) {
-        print_winning_status(child_nodes[i].winning_status);
-      }
-    }
-    assert(best_idx != -1);
+
+    return *best_it;
+    // if (best_idx == -1) {
+    //   cerr << "best_idx == -1" << endl;
+    //   cerr << child_nodes.size() << " " << delete_idxes.size() << endl;
+    //   cerr << must_lose_count << " " << must_draw_count << " " <<
+    //   action_count
+    //        << endl;
+    //   for (auto i : delete_idxes) {
+    //     print_winning_status(child_nodes[i].winning_status);
+    //   }
+    // }
+    // assert(best_idx != -1);
     // Node& ret = child_nodes[best_idx];
     // return ret;
-    return child_nodes[best_idx];
+    // return child_nodes[best_idx];
   }
 };
 
@@ -751,20 +759,24 @@ pair<actionType, double> exec_mcts(Node& root_node,
   int win_idx = -1;
   int draw_idx = -1;
   int lose_count = 0;
-  rep(i, legal_actions.size()) {
-    int n = root_node.child_nodes[i].visit_num;
+  int i = 0;
+  list<montecarlo::Node>::iterator best_it;
+
+  for (auto it = root_node.child_nodes.begin();
+       it != root_node.child_nodes.end(); ++it, i++) {
+    //   rep(i, legal_actions.size()) {
+    int n = it->visit_num;
     cerr << legal_actions[i] << " " << n << endl;
-    print_winning_status(root_node.child_nodes[i].winning_status);
-    if (chmax(max_score, n)) idx = i;
-    if (root_node.child_nodes[i].winning_status == WinningStatus::LOSE)
-      win_idx = i;
-    if (root_node.child_nodes[i].winning_status == WinningStatus::DRAW)
-      draw_idx = i;
-    if (root_node.child_nodes[i].winning_status == WinningStatus::WIN)
-      lose_count++;
+    print_winning_status(it->winning_status);
+    if (chmax(max_score, n)) best_it = it;
+    if (it->winning_status == WinningStatus::LOSE) win_idx = i;
+    if (it->winning_status == WinningStatus::DRAW) draw_idx = i;
+    if (it->winning_status == WinningStatus::WIN) lose_count++;
+    ++it;
   }
-  double win_rate = ((double)max_score - root_node.child_nodes[idx].win_count) /
-                    (double)max_score;
+
+  double win_rate =
+      ((double)max_score - best_it->win_count) / (double)max_score;
 
   if (win_idx != -1) {
     cerr << "必勝" << endl;
@@ -783,10 +795,12 @@ Node advane_node(Node& root_node, actionType action) {
     return Node(root_node.state);
   }
   vector<actionType> legal_actions = root_node.state.legal_actions();
+  auto it = root_node.child_nodes.begin();
   rep(i, legal_actions.size()) {
     if (legal_actions[i] == action) {
-      return root_node.child_nodes[i];
+      return *it;
     }
+    it++;
   }
   assert(false);
   return Node(root_node.state);
