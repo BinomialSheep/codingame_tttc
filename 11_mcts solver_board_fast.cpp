@@ -815,7 +815,6 @@ int main() {
       cin >> rows[i] >> cols[i];
       cin.ignore();
     }
-
     root_node.state.print_board();
 
     // 初手はさすがにど真ん中でいい
