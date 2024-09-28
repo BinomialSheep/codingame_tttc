@@ -23,7 +23,8 @@
 			"deque": "cpp",
 			"vector": "cpp",
 			"ratio": "cpp",
-			"iomanip": "cpp"
+			"iomanip": "cpp",
+			"type_traits": "cpp"
 		}
 	}
 }

@@ -1,7 +1,7 @@
 /**
  * 12_restart.cpp
  * vectorをlistに変えて削除しやすいようにした
- * 149位
+ * 109位
  */
 #include <bits/stdc++.h>
 using namespace std;
@@ -52,6 +52,11 @@ class TimeKeeper {
   bool isTimeOver() const {
     auto diff = high_resolution_clock::now() - start_time_;
     return duration_cast<milliseconds>(diff).count() >= time_threshold_;
+  }
+
+  int64_t getElapsedTime() const {
+    auto diff = high_resolution_clock::now() - start_time_;
+    return duration_cast<milliseconds>(diff).count();
   }
 };
 
@@ -425,7 +430,8 @@ class State {
   /**
    * 指定したactionでゲームを1ターン進め、次のプレイヤー視点の盤面にする
    */
-  void advance(actionType action) {
+  int advance(actionType action) {
+    int ret = big_board_index;
     big_board_index = action_to_now_big_board[action];
 
     // big_board_indexのaction_to_small_board_digit[action]桁目に指す
@@ -440,6 +446,19 @@ class State {
     big_board_index = action_to_next_big_board[action];
     if (big_board_int & big_board_shift_3[big_board_index])
       big_board_index = -1;
+    return ret;
+  }
+
+  /**
+   * 1手戻す。
+   */
+  void retrive(actionType action, int last_big_board_index) {
+    big_board_index = action_to_now_big_board[action];
+    board_int[big_board_index] &= ~(3 << action_to_small_board_digit[action]);
+    big_board_int &= ~big_board_shift_3[big_board_index];
+    is_x ^= 1;
+
+    big_board_index = last_big_board_index;
   }
 
   /**
@@ -617,6 +636,27 @@ class Node {
 
   // ノードの評価を行う
   float evaluate() {
+    if (this->winning_status != NONE) {
+      float value;
+      switch (this->winning_status) {
+        case (WinningStatus::WIN):
+          value = 1;
+          winning_status = WinningStatus::WIN;
+          break;
+        case (WinningStatus::LOSE):
+          value = 0;
+          winning_status = WinningStatus::LOSE;
+          break;
+        default:
+          value = 0.5;
+          winning_status = WinningStatus::DRAW;
+          break;
+      }
+      win_count += value;
+      visit_num++;
+      return value;
+    }
+
     if (state.is_done()) {
       float value;
       switch (state.get_winning_status()) {
@@ -735,7 +775,7 @@ class Node {
  * 制限時間(ms)を指定してMCTSで行動を決定する
  */
 pair<actionType, double> exec_mcts(Node& root_node,
-                                   const int64_t time_threshold = 90) {
+                                   const int64_t time_threshold = 85) {
   if (root_node.child_nodes.empty()) root_node.expand();
   auto time_keeper = TimeKeeper(time_threshold);
   int loop_count;
@@ -752,28 +792,54 @@ pair<actionType, double> exec_mcts(Node& root_node,
 
   cerr << "loop_count: " << loop_count << endl;
 
-  int idx = 0;
+  int best_idx = 0;
   int max_score = -1e9;
   int win_idx = -1;
   int draw_idx = -1;
   int lose_count = 0;
-  int i = 0;
-  list<montecarlo::Node>::iterator best_it;
+  list<montecarlo::Node>::iterator best_it = root_node.child_nodes.end();
 
   cerr << "root_node.child_nodes.size(): " << root_node.child_nodes.size()
        << endl;
 
-  // FIX ME：legal_actionのinedxとは違うので困る
-
-  for (auto it = root_node.child_nodes.begin();
-       it != root_node.child_nodes.end(); ++it, i++) {
+  // 1手進めたnodeのイテレータを探す. 削除済みノードの手の場合はend()が返る
+  // 若干重いのでlast_itを記録して尺取りしてもいいかも
+  auto last_it = root_node.child_nodes.begin();
+  auto find_action_iterator = [&](actionType action) -> list<Node>::iterator {
+    root_node.state.advance(action);
+    for (auto it = last_it; it != root_node.child_nodes.end(); ++it) {
+      if (root_node.state == (*it).state) {
+        last_it = it;
+        last_it++;
+        root_node.state.retrive(action, -1);
+        return it;
+      }
+    }
+    root_node.state.retrive(action, -1);
+    return root_node.child_nodes.end();
+  };
+  cerr << "探索終了" << time_keeper.getElapsedTime() << endl;
+  rep(i, (int)legal_actions.size()) {
+    auto it = find_action_iterator(legal_actions[i]);
+    if (it == root_node.child_nodes.end()) continue;
     int n = it->visit_num;
     cerr << legal_actions[i] << " " << n << endl;
     print_winning_status(it->winning_status);
-    if (chmax(max_score, n)) best_it = it, idx = i;
-    if (it->winning_status == WinningStatus::LOSE) win_idx = i;
-    if (it->winning_status == WinningStatus::DRAW) draw_idx = i;
-    if (it->winning_status == WinningStatus::WIN) lose_count++;
+    if (chmax(max_score, n)) best_it = it, best_idx = i;
+    if (it->winning_status == WinningStatus::LOSE) {
+      win_idx = i;
+      break;
+    } else if (it->winning_status == WinningStatus::DRAW) {
+      draw_idx = i;
+    } else if (it->winning_status == WinningStatus::WIN) {
+      lose_count++;
+    }
+  }
+  cerr << "最適手求め終わり" << time_keeper.getElapsedTime() << endl;
+
+  if (best_it == root_node.child_nodes.end()) {
+    cerr << "打つ手なし？" << endl;
+    return make_pair(legal_actions[0], 0);
   }
 
   double win_rate =
@@ -782,12 +848,12 @@ pair<actionType, double> exec_mcts(Node& root_node,
   if (win_idx != -1) {
     cerr << "必勝" << endl;
     return make_pair(legal_actions[win_idx], 1);
-  } else if (draw_idx != -1 && lose_count == (int)legal_actions.size()) {
+  } else if (draw_idx != -1) {
     cerr << "引き分け" << endl;
     return make_pair(legal_actions[draw_idx], 0.5);
   }
 
-  return make_pair(legal_actions[idx], win_rate);
+  return make_pair(legal_actions[best_idx], win_rate);
 }
 
 /**
@@ -831,7 +897,6 @@ int main() {
       // 相手の手でrootを勧める
       root_node = montecarlo::advane_node(root_node, opp_row * 9 + opp_col);
     }
-    cerr << "ボード入力開始" << endl;
     // ボード入力
     cin.ignore();
     int N;
@@ -842,7 +907,6 @@ int main() {
       cin >> rows[i] >> cols[i];
       cin.ignore();
     }
-    cerr << "ボード入力終了" << endl;
 
     // デバッグ用のボード出力
     root_node.state.print_board();
