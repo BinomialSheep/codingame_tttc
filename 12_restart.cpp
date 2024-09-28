@@ -553,6 +553,13 @@ class State {
     }
     cerr << "big_board_index: " << big_board_index << endl;
   }
+
+  bool operator==(const State& other) const {
+    // TODO：keyでの比較に変えたいかも
+    return this->big_board_int == other.big_board_int &&
+           this->big_board_index == other.big_board_index &&
+           this->board_int == other.board_int;
+  }
 };
 
 namespace montecarlo {
@@ -697,16 +704,15 @@ class Node {
     // int best_idx = -1;
     vector<int> delete_idxes;
 
-    list<montecarlo::Node>::iterator best_it;
+    list<montecarlo::Node>::iterator best_it = child_nodes.end();
 
     for (auto it = child_nodes.begin(); it != child_nodes.end();) {
-      //   rep(i, child_nodes.size()) {
       const auto& child_node = *it;
-      //   if (child_node.winning_status != WinningStatus::NONE) {
-      //     // 決着済みのノードは今後評価しない
-      //     it = child_nodes.erase(it);
-      //     continue;
-      //   }
+      if (child_node.winning_status != WinningStatus::NONE) {
+        // 決着済みのノードは今後評価しない
+        it = child_nodes.erase(it);
+        continue;
+      }
       double ucb1_value = 1. -
                           child_node.win_count / (double)child_node.visit_num +
                           C * sqrt(2. * log(sum_n) / child_node.visit_num);
@@ -717,21 +723,8 @@ class Node {
       ++it;
     }
 
+    assert(best_it != child_nodes.end());
     return *best_it;
-    // if (best_idx == -1) {
-    //   cerr << "best_idx == -1" << endl;
-    //   cerr << child_nodes.size() << " " << delete_idxes.size() << endl;
-    //   cerr << must_lose_count << " " << must_draw_count << " " <<
-    //   action_count
-    //        << endl;
-    //   for (auto i : delete_idxes) {
-    //     print_winning_status(child_nodes[i].winning_status);
-    //   }
-    // }
-    // assert(best_idx != -1);
-    // Node& ret = child_nodes[best_idx];
-    // return ret;
-    // return child_nodes[best_idx];
   }
 };
 
@@ -762,17 +755,18 @@ pair<actionType, double> exec_mcts(Node& root_node,
   int i = 0;
   list<montecarlo::Node>::iterator best_it;
 
+  cerr << "root_node.child_nodes.size(): " << root_node.child_nodes.size()
+       << endl;
+
   for (auto it = root_node.child_nodes.begin();
        it != root_node.child_nodes.end(); ++it, i++) {
-    //   rep(i, legal_actions.size()) {
     int n = it->visit_num;
     cerr << legal_actions[i] << " " << n << endl;
     print_winning_status(it->winning_status);
-    if (chmax(max_score, n)) best_it = it;
+    if (chmax(max_score, n)) best_it = it, idx = i;
     if (it->winning_status == WinningStatus::LOSE) win_idx = i;
     if (it->winning_status == WinningStatus::DRAW) draw_idx = i;
     if (it->winning_status == WinningStatus::WIN) lose_count++;
-    ++it;
   }
 
   double win_rate =
@@ -790,19 +784,21 @@ pair<actionType, double> exec_mcts(Node& root_node,
 }
 
 Node advane_node(Node& root_node, actionType action) {
+  root_node.state.advance(action);
   if (root_node.child_nodes.empty()) {
-    root_node.state.advance(action);
+    cerr << "root_node.child_nodes.empty() == true" << endl;
     return Node(root_node.state);
   }
   vector<actionType> legal_actions = root_node.state.legal_actions();
-  auto it = root_node.child_nodes.begin();
-  rep(i, legal_actions.size()) {
-    if (legal_actions[i] == action) {
+  cerr << "legal_actions.size(): " << legal_actions.size() << endl;
+  for (auto it = root_node.child_nodes.begin();
+       it != root_node.child_nodes.end(); it++) {
+    if (root_node.state == (*it).state) {
       return *it;
     }
-    it++;
   }
-  assert(false);
+  // 削除済み（必敗）局面を相手が選んでいる場合は新規追加が必要
+  cerr << "advane_node() 相手が必敗を選んだ場合" << endl;
   return Node(root_node.state);
 }
 
@@ -820,12 +816,14 @@ int main() {
     ++turn;
     int opp_row, opp_col;
     cin >> opp_row >> opp_col;
+    cerr << "opp " << opp_row << " " << opp_col << endl;
     if (opp_row == -1) {
       // 先手の1ターン目
     } else {
       // 相手の手でrootを勧める
       root_node = montecarlo::advane_node(root_node, opp_row * 9 + opp_col);
     }
+    cerr << "ボード入力開始" << endl;
     // ボード入力
     cin.ignore();
     int N;
@@ -836,6 +834,8 @@ int main() {
       cin >> rows[i] >> cols[i];
       cin.ignore();
     }
+    cerr << "ボード入力終了" << endl;
+
     // デバッグ用のボード出力
     root_node.state.print_board();
 
