@@ -1,7 +1,7 @@
 /**
  * 12_restart.cpp
- *
- * FIX_ME!!!!!!!!!!
+ * vectorをlistに変えて削除しやすいようにした
+ * 149位
  */
 #include <bits/stdc++.h>
 using namespace std;
@@ -408,12 +408,11 @@ class State {
   // big boardのindexから、そのbig boardの左上のboard idxを引く
   inline static const vector<int> big_board_to_board_start = {
       60, 57, 54, 33, 30, 27, 6, 3, 0};
-  // bit boardへの移行過程
+  // legal_action形式用
   inline static const vector<int> small_board_start_i_idff = {
       20, 19, 18, 11, 10, 9, 2, 1, 0};
 
  public:
-  // vector<string> board;
   array<int, 9> board_int = {0, 0, 0, 0, 0, 0, 0, 0, 0};
   bool is_x = true;
   // 次にどのゲームを着手するか
@@ -423,11 +422,13 @@ class State {
 
   State() {}
 
-  // 指定したactionでゲームを1ターン進め、次のプレイヤー視点の盤面にする
+  /**
+   * 指定したactionでゲームを1ターン進め、次のプレイヤー視点の盤面にする
+   */
   void advance(actionType action) {
     big_board_index = action_to_now_big_board[action];
 
-    // big_board_indexのaaction_to_small_board_digit[action]桁目に指す
+    // big_board_indexのaction_to_small_board_digit[action]桁目に指す
     if (is_x) {
       board_int[big_board_index] |= 2 << action_to_small_board_digit[action];
     } else {
@@ -441,7 +442,9 @@ class State {
       big_board_index = -1;
   }
 
-  // 現在のプレイヤーが可能な行動を全て取得する
+  /**
+   * 現在のプレイヤーが可能な行動を全て取得する
+   */
   vector<actionType> legal_actions() {
     vector<actionType> ret;
 
@@ -695,14 +698,14 @@ class Node {
   Node& nextChildNode() {
     for (auto& child_node : child_nodes) {
       // 試行回数0のノードは優先的に選択する
-      if (child_node.visit_num < 5) return child_node;
+      if (child_node.visit_num == 0) return child_node;
+      // 最初にまとめてプレイした方がいい可能性もある
+      //   if (child_node.visit_num < 5) return child_node;
     }
     int sum_n = 0;  // 全ノードの試行回数の総和
     for (const auto& child_node : child_nodes) sum_n += child_node.visit_num;
 
     double best_value = -INF;
-    // int best_idx = -1;
-    vector<int> delete_idxes;
 
     list<montecarlo::Node>::iterator best_it = child_nodes.end();
 
@@ -728,15 +731,17 @@ class Node {
   }
 };
 
-// 制限時間(ms)を指定してMCTSで行動を決定する
+/**
+ * 制限時間(ms)を指定してMCTSで行動を決定する
+ */
 pair<actionType, double> exec_mcts(Node& root_node,
                                    const int64_t time_threshold = 90) {
   if (root_node.child_nodes.empty()) root_node.expand();
   auto time_keeper = TimeKeeper(time_threshold);
-  int turn;
+  int loop_count;
 
-  for (turn = 1;; turn++) {
-    if (turn & (1 << 7) && time_keeper.isTimeOver()) break;
+  for (loop_count = 1;; loop_count++) {
+    if (loop_count & (1 << 7) && time_keeper.isTimeOver()) break;
     if (root_node.winning_status != WinningStatus::NONE) {
       print_winning_status(root_node.winning_status);
       break;
@@ -745,7 +750,7 @@ pair<actionType, double> exec_mcts(Node& root_node,
   }
   vector<actionType> legal_actions = root_node.state.legal_actions();
 
-  cerr << "turn: " << turn << endl;
+  cerr << "loop_count: " << loop_count << endl;
 
   int idx = 0;
   int max_score = -1e9;
@@ -757,6 +762,8 @@ pair<actionType, double> exec_mcts(Node& root_node,
 
   cerr << "root_node.child_nodes.size(): " << root_node.child_nodes.size()
        << endl;
+
+  // FIX ME：legal_actionのinedxとは違うので困る
 
   for (auto it = root_node.child_nodes.begin();
        it != root_node.child_nodes.end(); ++it, i++) {
@@ -783,25 +790,26 @@ pair<actionType, double> exec_mcts(Node& root_node,
   return make_pair(legal_actions[idx], win_rate);
 }
 
+/**
+ * 指定された手で1手進めたNodeを返す
+ */
 Node advane_node(Node& root_node, actionType action) {
   root_node.state.advance(action);
   if (root_node.child_nodes.empty()) {
-    cerr << "root_node.child_nodes.empty() == true" << endl;
     return Node(root_node.state);
   }
+  // 既にMCTにnodeが存在する場合はそれを使う
   vector<actionType> legal_actions = root_node.state.legal_actions();
-  cerr << "legal_actions.size(): " << legal_actions.size() << endl;
   for (auto it = root_node.child_nodes.begin();
        it != root_node.child_nodes.end(); it++) {
     if (root_node.state == (*it).state) {
       return *it;
     }
   }
-  // 削除済み（必敗）局面を相手が選んでいる場合は新規追加が必要
+  // NOTE：削除済み（必敗）局面を相手が選んでいる場合は新規追加が必要
   cerr << "advane_node() 相手が必敗を選んだ場合" << endl;
   return Node(root_node.state);
 }
-
 }  // namespace montecarlo
 
 int main() {
